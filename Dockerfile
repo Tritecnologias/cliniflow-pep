@@ -6,8 +6,8 @@ WORKDIR /app
 # Copia dependências primeiro para cache do Docker
 COPY package*.json ./
 
-# Instala todas as dependências
-RUN npm ci
+# Instala dependências ignorando conflito de versões de peer dependencies
+RUN npm ci --legacy-peer-deps
 
 # Copia o código fonte do projeto
 COPY . .
