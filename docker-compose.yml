@@ -11,13 +11,6 @@ services:
       - .env
     networks:
       - coolify
-    labels:
-      - traefik.enable=true
-      - traefik.http.services.cliniflow-app.loadbalancer.server.port=80
-      - traefik.http.routers.cliniflow-app.rule=Host(`pepgratis.com.br`) || Host(`www.pepgratis.com.br`)
-      - traefik.http.routers.cliniflow-app.entrypoints=https
-      - traefik.http.routers.cliniflow-app.tls=true
-      - traefik.http.routers.cliniflow-app.tls.certresolver=letsencrypt
 
 networks:
   coolify:
