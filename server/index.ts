@@ -33,6 +33,7 @@ import auditRouter     from './routes/audit.js';
 import remindersRouter from './routes/reminders.js';
 import templatesRouter from './routes/templates.js';
 import financialRouter from './routes/financial.js';
+import { ensureSchema } from './autoMigrate.js';
 
 app.use('/api/clinic',       clinicRouter);
 app.use('/api/users',        usersRouter);
@@ -44,12 +45,36 @@ app.use('/api/reminders',    remindersRouter);
 app.use('/api/templates',    templatesRouter);
 app.use('/api/financial',    financialRouter);
 
+// Endpoint de verificação e disparo de migração/seed do banco
+app.all('/api/migrate', async (req, res) => {
+  try {
+    const force = req.query.force === 'true';
+    const result = await ensureSchema(force);
+    res.json({
+      status: result.error ? 'error' : 'ok',
+      details: result,
+      message: result.created
+        ? 'Schema e seed inicial aplicados com sucesso!'
+        : 'Banco de dados já estava inicializado.'
+    });
+  } catch (e: any) {
+    res.status(500).json({ status: 'error', error: e.message });
+  }
+});
+
 // Health check
 app.get('/api/health', async (_req, res) => {
   try {
     const { pool } = await import('./db.js');
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', clinic_id: CLINIC_ID });
+    const { rows } = await pool.query("SELECT to_regclass('public.patients') as tbl");
+    const schemaReady = Boolean(rows[0]?.tbl);
+    res.json({
+      status: 'ok',
+      db: 'connected',
+      schema: schemaReady ? 'ready' : 'pending_migration',
+      clinic_id: CLINIC_ID
+    });
   } catch (e: any) {
     res.status(503).json({ status: 'error', db: e.message });
   }
@@ -73,10 +98,20 @@ app.get('*', (_req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`✅ CliniFlow PEP rodando na porta ${PORT}`);
   console.log(`   CLINIC_ID: ${CLINIC_ID}`);
   console.log(`   DB: ${process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@') ?? 'não configurado'}`);
+
+  // Auto-migra se as tabelas ainda não existirem no PostgreSQL
+  try {
+    const result = await ensureSchema();
+    if (result.created) {
+      console.log('🎉 Banco de dados auto-migrado e pronto para uso!');
+    }
+  } catch (err: any) {
+    console.error('Falha ao auto-migrar banco de dados:', err?.message || err);
+  }
 });
 
 // Em produção, se a porta principal for 80, escuta também na 3001 (ou vice-versa) para garantir compatibilidade com qualquer roteamento do Traefik/Coolify
