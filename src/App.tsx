@@ -329,8 +329,8 @@ export default function App() {
         onResetDemo={() => Storage.resetDemo()}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+      {/* Main Content Area (com padding inferior no mobile para a BottomNav fixa) */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 lg:pb-6">
         {/* Render Telemedicine Workspace with Simultaneous WebRTC and PEP */}
         {activeTelemedicineApp && (
           <TelemedicineWorkspace

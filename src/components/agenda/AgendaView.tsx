@@ -310,9 +310,130 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         </div>
       </div>
 
-      {/* Appointment Grid / Table */}
+      {/* Appointment Grid / Table: Mobile Cards (< md) + Desktop Table (>= md) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Cards (< md) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredAppointments.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-400">
+              Nenhum agendamento encontrado para os filtros selecionados.
+            </div>
+          ) : (
+            filteredAppointments.map((app) => {
+              const patient = patients.find((p) => p.id === app.patient_id);
+              const doctor = users.find((u) => u.id === app.professional_id);
+
+              return (
+                <div key={app.id} className="p-4 hover:bg-slate-50/70 transition-colors space-y-3">
+                  {/* Top: Time, Modality, Status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900 text-sm">
+                        {formatTimeBR(app.scheduled_at)}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {app.duration_minutes}min
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {app.appointment_type === 'telemedicine' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <Video className="w-3 h-3 text-indigo-600" />
+                          <span>Telemedicina</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                          Presencial
+                        </span>
+                      )}
+                      {getStatusBadge(app.status)}
+                    </div>
+                  </div>
+
+                  {/* Patient Info */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (patient) {
+                          setSelectedOverviewPatient(patient);
+                          setShowOverviewModal(true);
+                        }
+                      }}
+                      className="font-bold text-slate-900 text-sm text-left hover:text-teal-700 transition-colors block"
+                    >
+                      {patient?.name || 'Paciente'}
+                    </button>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                      <span>{patient?.health_insurance || 'Particular'}</span>
+                      <span>·</span>
+                      <span>Dr(a). {doctor?.name?.split(' ')[1] || doctor?.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Notes if any */}
+                  {app.notes && (
+                    <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg italic">
+                      "{app.notes}"
+                    </div>
+                  )}
+
+                  {/* Actions & WhatsApp */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => onOpenWhatsApp(app)}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${
+                        app.whatsapp_confirmed_at
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          : app.whatsapp_sent_at
+                          ? 'bg-blue-50 text-blue-800 border-blue-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{app.whatsapp_confirmed_at ? 'Confirmado' : 'WhatsApp'}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {(app.status === 'scheduled' || app.status === 'confirmed') && (
+                        <button
+                          onClick={() => onUpdateStatus(app.id, 'waiting')}
+                          className="px-2.5 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200"
+                        >
+                          Check-in
+                        </button>
+                      )}
+
+                      {app.appointment_type === 'telemedicine' && (
+                        <button
+                          onClick={() => onStartTelemedicine(app)}
+                          className="px-2.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1"
+                        >
+                          <Video className="w-3.5 h-3.5" />
+                          <span>Sala</span>
+                        </button>
+                      )}
+
+                      {currentUser.role !== 'receptionist' && (
+                        <button
+                          onClick={() => onOpenPEP(app)}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg flex items-center gap-1 shadow-2xs"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>PEP</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">

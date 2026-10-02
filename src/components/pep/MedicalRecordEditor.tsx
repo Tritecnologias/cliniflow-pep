@@ -395,36 +395,37 @@ export const MedicalRecordEditor: React.FC<MedicalRecordEditorProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 self-stretch md:self-auto">
           <button
             onClick={() => setShowPrintModal(true)}
-            className="px-3 py-2 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700"
+            className="flex-1 sm:flex-initial px-2.5 sm:px-3 py-2 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-slate-700"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Visualizar / Imprimir</span>
+            <span className="hidden sm:inline">Visualizar / </span>
+            <span>Imprimir</span>
           </button>
 
           {!isSigned && isDoctorOrOwner && (
             <>
               <button
                 onClick={handleSaveDraft}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors shadow-xs"
+                className="flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg transition-colors shadow-xs text-center"
               >
-                Salvar Rascunho
+                Rascunho
               </button>
               <button
                 onClick={() => setShowCloudSignatureModal(true)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+                className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>Assinar Digitalmente (BirdID/VIDaaS)</span>
+                <span>Assinar Digital</span>
               </button>
             </>
           )}
 
           <button
             onClick={onCancel}
-            className="px-3 py-2 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+            className="px-2.5 sm:px-3 py-2 text-xs font-medium text-slate-400 hover:text-white transition-colors"
           >
             Fechar
           </button>

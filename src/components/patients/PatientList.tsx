@@ -129,11 +129,11 @@ export const PatientList: React.FC<PatientListProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {/* Quota counter button */}
           <button
             onClick={onOpenPlanModal}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
               hasReachedQuota
                 ? 'bg-rose-50 border-rose-200 text-rose-800'
                 : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -150,7 +150,7 @@ export const PatientList: React.FC<PatientListProps> = ({
               setSelectedLGPDExportPatient(patients[0] || null);
               setShowLGPDModal(true);
             }}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-2xs transition-colors flex items-center gap-1.5"
+            className="px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-1.5"
             title="Exportar dossiê completo de dados de pacientes (Art. 18, V - LGPD)"
           >
             <ShieldCheck className="w-4 h-4 text-teal-600" />
@@ -159,7 +159,7 @@ export const PatientList: React.FC<PatientListProps> = ({
 
           <button
             onClick={handleOpenAddModal}
-            className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Novo Paciente</span>
@@ -169,7 +169,7 @@ export const PatientList: React.FC<PatientListProps> = ({
 
       {/* Quota Alert Banner if near or at limit */}
       {hasReachedQuota && (
-        <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between gap-3 text-xs text-amber-900">
+        <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
@@ -179,7 +179,7 @@ export const PatientList: React.FC<PatientListProps> = ({
           </div>
           <button
             onClick={onOpenPlanModal}
-            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-md transition-colors shrink-0"
+            className="w-full sm:w-auto px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-md transition-colors shrink-0 text-center"
           >
             Ver Planos
           </button>
@@ -187,20 +187,122 @@ export const PatientList: React.FC<PatientListProps> = ({
       )}
 
       {/* Search Input */}
-      <div className="relative max-w-md">
+      <div className="relative w-full max-w-md">
         <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
         <input
           type="text"
           placeholder="Buscar paciente por nome, CPF ou convênio..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
         />
       </div>
 
-      {/* Patients Table */}
+      {/* Patients Container: Mobile Cards (< md) + Desktop Table (>= md) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* ── Mobile Card List (< md) ────────────────────────────── */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredPatients.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400">
+              Nenhum paciente cadastrado correspondente à busca.
+            </div>
+          ) : (
+            filteredPatients.map((p) => (
+              <div key={p.id} className="p-4 hover:bg-slate-50/70 transition-colors space-y-3">
+                {/* Header: Avatar, Name, CPF, Age, Insurance */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 border border-teal-200 text-sm font-bold flex items-center justify-center shrink-0 shadow-2xs">
+                      {p.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOverviewPatient(p);
+                          setShowOverviewModal(true);
+                        }}
+                        className="font-bold text-slate-900 text-sm text-left hover:text-teal-700 transition-colors truncate block"
+                      >
+                        {p.name}
+                      </button>
+                      <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                        <span>{p.cpf || '--'}</span>
+                        <span>·</span>
+                        <span>{p.birth_date ? `${calculateAge(p.birth_date)} anos` : '--'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                    {p.health_insurance}
+                  </span>
+                </div>
+
+                {/* Allergy alert if present */}
+                {p.allergies && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate"><strong>Alergias:</strong> {p.allergies}</span>
+                  </div>
+                )}
+
+                {/* Contact & WhatsApp */}
+                <div className="flex items-center justify-between text-xs text-slate-600 pt-0.5">
+                  <a
+                    href={`https://wa.me/55${p.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-emerald-700 font-medium hover:underline text-xs bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{formatPhone(p.phone)}</span>
+                  </a>
+
+                  {onDeletePatient && currentUser.role === 'owner' && (
+                    <button
+                      onClick={() => onDeletePatient(p.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                      title="Remover paciente"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Thumb Action Buttons */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                  {currentUser.role !== 'receptionist' ? (
+                    <button
+                      onClick={() => onSelectPatientPEP(p)}
+                      className="w-full py-2 px-3 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Abrir PEP</span>
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedOverviewPatient(p);
+                      setShowOverviewModal(true);
+                    }}
+                    className="w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-slate-200"
+                  >
+                    <Eye className="w-4 h-4 text-teal-600" />
+                    <span>Visão 360°</span>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Desktop Data Table (>= md) ─────────────────────────── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">

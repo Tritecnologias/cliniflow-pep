@@ -32,6 +32,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
   onStartTelemedicine,
 }) => {
   const [calledAlert, setCalledAlert] = React.useState<string | null>(null);
+  const [mobileQueueTab, setMobileQueueTab] = React.useState<'all' | 'waiting' | 'in_progress' | 'completed'>('all');
 
   // Play audio chime using Web Audio API when calling patient
   const playChime = () => {
@@ -66,11 +67,11 @@ export const QueueView: React.FC<QueueViewProps> = ({
   const completedList = appointments.filter((a) => a.status === 'completed');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Title & Callout banner */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-teal-600" />
             <span>Fila de Espera & Painel de Chamada</span>
           </h2>
@@ -87,10 +88,77 @@ export const QueueView: React.FC<QueueViewProps> = ({
         )}
       </div>
 
+      {/* Mobile Queue Tab Switcher (< md) */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => setMobileQueueTab('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            mobileQueueTab === 'all'
+              ? 'bg-teal-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Todos</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+            mobileQueueTab === 'all' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {waitingList.length + inProgressList.length + completedList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMobileQueueTab('waiting')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            mobileQueueTab === 'waiting'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Na Espera</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+            mobileQueueTab === 'waiting' ? 'bg-white/25 text-white' : 'bg-amber-50 text-amber-800'
+          }`}>
+            {waitingList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMobileQueueTab('in_progress')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            mobileQueueTab === 'in_progress'
+              ? 'bg-teal-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Atendimento</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+            mobileQueueTab === 'in_progress' ? 'bg-white/25 text-white' : 'bg-teal-50 text-teal-800'
+          }`}>
+            {inProgressList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setMobileQueueTab('completed')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            mobileQueueTab === 'completed'
+              ? 'bg-slate-800 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Concluídos</span>
+          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+            mobileQueueTab === 'completed' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {completedList.length}
+          </span>
+        </button>
+      </div>
+
       {/* Grid: 3 columns: Na Espera (Check-in), Em Atendimento, Concluídos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {/* Column 1: Sala de Espera */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col">
+        <div className={`${mobileQueueTab !== 'all' && mobileQueueTab !== 'waiting' ? 'hidden md:flex' : 'flex'} bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 flex-col`}>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
@@ -165,7 +233,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
         </div>
 
         {/* Column 2: Em Atendimento */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col">
+        <div className={`${mobileQueueTab !== 'all' && mobileQueueTab !== 'in_progress' ? 'hidden md:flex' : 'flex'} bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 flex-col`}>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
@@ -246,7 +314,7 @@ export const QueueView: React.FC<QueueViewProps> = ({
         </div>
 
         {/* Column 3: Concluídos */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 flex flex-col">
+        <div className={`${mobileQueueTab !== 'all' && mobileQueueTab !== 'completed' ? 'hidden md:flex' : 'flex'} bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 flex-col`}>
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />

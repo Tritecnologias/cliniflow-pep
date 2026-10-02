@@ -76,6 +76,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [filterDate, setFilterDate] = useState<string>('today');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [mobileColumnFilter, setMobileColumnFilter] = useState<string>('all');
 
   // Column definitions
   const columns: KanbanColumnConfig[] = [
@@ -301,24 +302,81 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         </div>
       </div>
 
-      {/* KANBAN BOARD CONTAINER */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
-        {columns.map((col) => {
-          const list = columnData[col.id] || [];
-          const isOver = dragOverColumnId === col.id;
+      {/* Mobile Column Segment Switcher (< md) */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setMobileColumnFilter('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+            mobileColumnFilter === 'all'
+              ? 'bg-teal-600 text-white shadow-xs'
+              : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Todos</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              mobileColumnFilter === 'all'
+                ? 'bg-white/25 text-white'
+                : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {filteredAppointments.length}
+          </span>
+        </button>
 
+        {columns.map((col) => {
+          const count = (columnData[col.id] || []).length;
+          const isSelected = mobileColumnFilter === col.id;
           return (
-            <div
+            <button
               key={col.id}
-              onDragOver={(e) => handleDragOver(e, col.id)}
-              onDragLeave={(e) => handleDragLeave(e, col.id)}
-              onDrop={(e) => handleDrop(e, col.targetStatus)}
-              className={`flex flex-col rounded-2xl border transition-all min-h-[500px] ${
-                isOver
-                  ? 'border-teal-500 bg-teal-50/70 ring-2 ring-teal-400 shadow-md'
-                  : 'border-slate-200 bg-slate-100/60'
+              type="button"
+              onClick={() => setMobileColumnFilter(col.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                isSelected
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 border border-slate-200'
               }`}
             >
+              <span>{col.title.split(' ')[0]}</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  isSelected
+                    ? 'bg-white/25 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* KANBAN BOARD CONTAINER */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
+        {columns
+          .filter(
+            (col) =>
+              mobileColumnFilter === 'all' || col.id === mobileColumnFilter
+          )
+          .map((col) => {
+            const list = columnData[col.id] || [];
+            const isOver = dragOverColumnId === col.id;
+
+            return (
+              <div
+                key={col.id}
+                onDragOver={(e) => handleDragOver(e, col.id)}
+                onDragLeave={(e) => handleDragLeave(e, col.id)}
+                onDrop={(e) => handleDrop(e, col.targetStatus)}
+                className={`flex flex-col rounded-2xl border transition-all min-h-[240px] md:min-h-[500px] ${
+                  isOver
+                    ? 'border-teal-500 bg-teal-50/70 ring-2 ring-teal-400 shadow-md'
+                    : 'border-slate-200 bg-slate-100/60'
+                }`}
+              >
               {/* Column Header */}
               <div className="p-3.5 border-b border-slate-200/80 bg-white rounded-t-2xl space-y-1">
                 <div className="flex items-center justify-between">
