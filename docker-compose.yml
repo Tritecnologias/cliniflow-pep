@@ -5,7 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: cliniflow-app
     restart: unless-stopped
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     env_file:
       - .env
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
