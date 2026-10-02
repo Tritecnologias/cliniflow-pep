@@ -1,0 +1,6 @@
+{
+  "name": "CliniFlow PEP - Gestão Clínica & Prontuário Eletrônico",
+  "description": "SaaS multi-tenant para clínicas e consultórios com PEP dinâmico (JSONB), CID-10, assinatura digital ICP-Brasil, trilha de auditoria CFM/LGPD e agendamento WhatsApp-First.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
