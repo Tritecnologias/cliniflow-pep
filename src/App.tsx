@@ -12,6 +12,7 @@ import {
   DocumentTemplate,
 } from './types/clinic';
 import { Storage } from './lib/storage';
+import { api } from './lib/api';
 import { Navbar } from './components/layout/Navbar';
 import { AgendaView } from './components/agenda/AgendaView';
 import { QueueView } from './components/agenda/QueueView';
@@ -30,30 +31,55 @@ import { FinancialManagementView } from './components/finance/FinancialManagemen
 import { Check, AlertCircle, Info, Sparkles } from 'lucide-react';
 
 export default function App() {
-  // State
+  // State — inicializa com localStorage como fallback imediato
   const [clinic, setClinic] = useState<Clinic>(() => Storage.getClinic());
   const [users, setUsers] = useState<User[]>(() => Storage.getUsers());
-  const [activeUser, setActiveUser] = useState<User>(() =>
-    Storage.getActiveUser()
-  );
-  const [patients, setPatients] = useState<Patient[]>(() =>
-    Storage.getPatients()
-  );
-  const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    Storage.getAppointments()
-  );
-  const [records, setRecords] = useState<MedicalRecord[]>(() =>
-    Storage.getMedicalRecords()
-  );
-  const [auditTrail, setAuditTrail] = useState<MedicalAuditTrail[]>(() =>
-    Storage.getAuditTrail()
-  );
-  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() =>
-    Storage.getReminderSettings()
-  );
-  const [templates, setTemplates] = useState<DocumentTemplate[]>(() =>
-    Storage.getDocumentTemplates()
-  );
+  const [activeUser, setActiveUser] = useState<User>(() => Storage.getActiveUser());
+  const [patients, setPatients] = useState<Patient[]>(() => Storage.getPatients());
+  const [appointments, setAppointments] = useState<Appointment[]>(() => Storage.getAppointments());
+  const [records, setRecords] = useState<MedicalRecord[]>(() => Storage.getMedicalRecords());
+  const [auditTrail, setAuditTrail] = useState<MedicalAuditTrail[]>(() => Storage.getAuditTrail());
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() => Storage.getReminderSettings());
+  const [templates, setTemplates] = useState<DocumentTemplate[]>(() => Storage.getDocumentTemplates());
+  const [apiReady, setApiReady] = useState(false);
+
+  // Carrega dados do PostgreSQL via API na inicialização
+  useEffect(() => {
+    async function loadFromApi() {
+      try {
+        await api.health(); // testa conectividade
+        const [c, u, p, a, r, aud, rem, t] = await Promise.all([
+          api.getClinic(),
+          api.getUsers(),
+          api.getPatients(),
+          api.getAppointments(),
+          api.getRecords(),
+          api.getAudit(),
+          api.getReminders(),
+          api.getTemplates(),
+        ]);
+        if (c) setClinic(c);
+        if (u?.length) { setUsers(u); }
+        if (p) setPatients(p);
+        if (a) setAppointments(a);
+        if (r) setRecords(r);
+        if (aud) setAuditTrail(aud);
+        if (rem) setReminderSettings(rem);
+        if (t) setTemplates(t);
+        setApiReady(true);
+      } catch {
+        // API indisponível — continua com localStorage (modo offline)
+        setApiReady(false);
+      }
+    }
+    loadFromApi();
+  }, []);
+
+  // Helper: recarrega lista de pacientes do servidor
+  const reloadPatients  = async () => { try { const p = await api.getPatients();     setPatients(p);     } catch {} };
+  const reloadAppointments = async () => { try { const a = await api.getAppointments(); setAppointments(a); } catch {} };
+  const reloadRecords   = async () => { try { const r = await api.getRecords();       setRecords(r);      } catch {} };
+  const reloadAudit     = async () => { try { const a = await api.getAudit();         setAuditTrail(a);   } catch {} };
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -86,10 +112,17 @@ export default function App() {
     showToast(`Perfil alterado para: ${user.name} (${user.role.toUpperCase()})`);
   };
 
+  // Determina o usuário ativo dos dados carregados da API
+  useEffect(() => {
+    if (apiReady && users.length > 0) {
+      const activeId = localStorage.getItem('cliniflow_active_user_id_v1');
+      const found = users.find(u => u.id === activeId);
+      setActiveUser(found || users[0]);
+    }
+  }, [apiReady, users]);
+
   // Status update handler
-  const handleUpdateStatus = (id: string, status: AppointmentStatus) => {
-    const updated = Storage.updateAppointmentStatus(id, status);
-    setAppointments(updated);
+  const handleUpdateStatus = async (id: string, status: AppointmentStatus) => {
     const statusLabels: Record<string, string> = {
       confirmed: 'Consulta confirmada!',
       waiting: 'Check-in realizado! Paciente na sala de espera.',
@@ -97,19 +130,36 @@ export default function App() {
       completed: 'Atendimento finalizado com sucesso!',
       cancelled: 'Agendamento cancelado.',
     };
+    try {
+      await api.updateStatus(id, status);
+      await reloadAppointments();
+    } catch {
+      const updated = Storage.updateAppointmentStatus(id, status);
+      setAppointments(updated);
+    }
     showToast(statusLabels[status] || 'Status atualizado com sucesso!');
   };
 
   // WhatsApp handlers
-  const handleSimulateWhatsAppConfirmation = (appointmentId: string) => {
-    const updated = Storage.confirmWhatsAppResponse(appointmentId);
-    setAppointments(updated);
+  const handleSimulateWhatsAppConfirmation = async (appointmentId: string) => {
+    try {
+      await api.confirmWhatsApp(appointmentId);
+      await reloadAppointments();
+    } catch {
+      const updated = Storage.confirmWhatsAppResponse(appointmentId);
+      setAppointments(updated);
+    }
     showToast('Resposta de confirmação do paciente recebida via WhatsApp!');
   };
 
-  const handleMarkWhatsAppSent = (appointmentId: string) => {
-    const updated = Storage.markWhatsAppSent(appointmentId);
-    setAppointments(updated);
+  const handleMarkWhatsAppSent = async (appointmentId: string) => {
+    try {
+      await api.markWhatsAppSent(appointmentId);
+      await reloadAppointments();
+    } catch {
+      const updated = Storage.markWhatsAppSent(appointmentId);
+      setAppointments(updated);
+    }
     showToast('Notificação enviada ao WhatsApp!');
   };
 
@@ -166,56 +216,93 @@ export default function App() {
   };
 
   // Add new patient
-  const handleAddPatient = (newPatient: Patient) => {
-    const updated = Storage.savePatient(newPatient);
-    setPatients(updated);
+  const handleAddPatient = async (newPatient: Patient) => {
+    try {
+      await api.savePatient(newPatient);
+      await reloadPatients();
+    } catch {
+      const updated = Storage.savePatient(newPatient);
+      setPatients(updated);
+    }
     showToast(`Paciente ${newPatient.name} cadastrado com sucesso!`);
   };
 
   // Add new appointment
-  const handleAddAppointment = (newApp: Appointment) => {
-    const updated = Storage.saveAppointment(newApp);
-    setAppointments(updated);
+  const handleAddAppointment = async (newApp: Appointment) => {
+    try {
+      await api.saveAppointment(newApp);
+      await reloadAppointments();
+    } catch {
+      const updated = Storage.saveAppointment(newApp);
+      setAppointments(updated);
+    }
     showToast('Novo agendamento criado com sucesso!');
   };
 
   // Public booking success handler
-  const handlePublicBookingSuccess = (
+  const handlePublicBookingSuccess = async (
     newPatient: Patient,
     newApp: Appointment
   ) => {
-    const updatedPatients = Storage.savePatient(newPatient);
-    const updatedAppointments = Storage.saveAppointment(newApp);
-    setPatients(updatedPatients);
-    setAppointments(updatedAppointments);
-    showToast(
-      `Novo agendamento recebido pelo portal para ${newPatient.name}!`
-    );
+    try {
+      await api.savePatient(newPatient);
+      await api.saveAppointment(newApp);
+      await reloadPatients();
+      await reloadAppointments();
+    } catch {
+      const updatedPatients = Storage.savePatient(newPatient);
+      const updatedAppointments = Storage.saveAppointment(newApp);
+      setPatients(updatedPatients);
+      setAppointments(updatedAppointments);
+    }
+    showToast(`Novo agendamento recebido pelo portal para ${newPatient.name}!`);
   };
 
   // Update Plan
-  const handleUpdatePlan = (newPlan: ClinicPlan) => {
-    const updatedClinic = Storage.updatePlan(newPlan);
-    setClinic(updatedClinic);
+  const handleUpdatePlan = async (newPlan: ClinicPlan) => {
+    try {
+      const updated = await api.updatePlan(newPlan);
+      setClinic(updated);
+    } catch {
+      const updatedClinic = Storage.updatePlan(newPlan);
+      setClinic(updatedClinic);
+    }
     showToast(`Plano alterado para ${newPlan.toUpperCase()} com sucesso!`);
   };
 
   // Save Reminder Settings
-  const handleSaveReminderSettings = (newSettings: ReminderSettings) => {
-    const saved = Storage.saveReminderSettings(newSettings);
-    setReminderSettings(saved);
+  const handleSaveReminderSettings = async (newSettings: ReminderSettings) => {
+    try {
+      const saved = await api.saveReminders(newSettings);
+      setReminderSettings(saved);
+    } catch {
+      const saved = Storage.saveReminderSettings(newSettings);
+      setReminderSettings(saved);
+    }
     showToast('Regras de antecedência do WhatsApp salvas com sucesso!');
   };
 
   // Document Template Handlers
-  const handleSaveTemplate = (template: DocumentTemplate) => {
-    const updated = Storage.saveDocumentTemplate(template);
-    setTemplates(updated);
+  const handleSaveTemplate = async (template: DocumentTemplate) => {
+    try {
+      await api.saveTemplate(template);
+      const list = await api.getTemplates();
+      setTemplates(list);
+    } catch {
+      const updated = Storage.saveDocumentTemplate(template);
+      setTemplates(updated);
+    }
   };
 
-  const handleDeleteTemplate = (id: string) => {
-    const updated = Storage.deleteDocumentTemplate(id);
-    setTemplates(updated);
+  const handleDeleteTemplate = async (id: string) => {
+    try {
+      await api.deleteTemplate(id);
+      const list = await api.getTemplates();
+      setTemplates(list);
+    } catch {
+      const updated = Storage.deleteDocumentTemplate(id);
+      setTemplates(updated);
+    }
   };
 
   const handleResetTemplates = () => {

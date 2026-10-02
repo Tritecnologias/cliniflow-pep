@@ -1,0 +1,70 @@
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = Number(process.env.PORT || 3001);
+const CLINIC_ID = process.env.CLINIC_ID || 'c101-morumbi';
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+// Injeta clinic_id em todas as rotas da API
+app.use('/api', (req, _res, next) => {
+  (req as any).clinicId = CLINIC_ID;
+  next();
+});
+
+// ── Rotas da API ──────────────────────────────────────────────
+import clinicRouter    from './routes/clinic.js';
+import usersRouter     from './routes/users.js';
+import patientsRouter  from './routes/patients.js';
+import appointmentsRouter from './routes/appointments.js';
+import recordsRouter   from './routes/records.js';
+import auditRouter     from './routes/audit.js';
+import remindersRouter from './routes/reminders.js';
+import templatesRouter from './routes/templates.js';
+import financialRouter from './routes/financial.js';
+
+app.use('/api/clinic',       clinicRouter);
+app.use('/api/users',        usersRouter);
+app.use('/api/patients',     patientsRouter);
+app.use('/api/appointments', appointmentsRouter);
+app.use('/api/records',      recordsRouter);
+app.use('/api/audit',        auditRouter);
+app.use('/api/reminders',    remindersRouter);
+app.use('/api/templates',    templatesRouter);
+app.use('/api/financial',    financialRouter);
+
+// Health check
+app.get('/api/health', async (_req, res) => {
+  try {
+    const { pool } = await import('./db.js');
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', clinic_id: CLINIC_ID });
+  } catch (e: any) {
+    res.status(503).json({ status: 'error', db: e.message });
+  }
+});
+
+// ── Serve o frontend React ────────────────────────────────────
+const distDir = path.join(__dirname, '..', 'dist');
+app.use(express.static(distDir));
+
+// SPA fallback — qualquer rota não-API serve o index.html
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distDir, 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ CliniFlow PEP rodando na porta ${PORT}`);
+  console.log(`   CLINIC_ID: ${CLINIC_ID}`);
+  console.log(`   DB: ${process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@') ?? 'não configurado'}`);
+});

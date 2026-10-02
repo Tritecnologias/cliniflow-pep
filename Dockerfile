@@ -1,29 +1,52 @@
-# 1. Build da aplicação React + Vite
+# ── Stage 1: Build do frontend React + Vite ──────────────────────────────────
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copia dependências primeiro para cache do Docker
 COPY package*.json ./
-
-# Instala dependências ignorando conflito de versões de peer dependencies
 RUN npm ci --legacy-peer-deps
 
-# Copia o código fonte do projeto
 COPY . .
-
-# Executa o build de produção do Vite
 RUN npm run build
 
-# 2. Servidor de produção com Nginx leve
-FROM nginx:alpine AS runner
+# ── Stage 2: Bundle do servidor Express com esbuild ───────────────────────────
+FROM node:22-alpine AS server-builder
 
-# Copia configuração do Nginx com suporte a SPA
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps
 
-# Copia os artefatos estáticos compilados pelo Vite
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY server ./server
+COPY tsconfig.json ./
 
-EXPOSE 80
+# Compila o servidor TypeScript para JS (bundle único)
+RUN npx esbuild server/index.ts \
+  --bundle \
+  --platform=node \
+  --target=node22 \
+  --format=esm \
+  --outfile=server.mjs \
+  --external:pg \
+  --external:dotenv
 
-CMD ["nginx", "-g", "daemon off;"]
+# ── Stage 3: Imagem de produção mínima ────────────────────────────────────────
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+# Apenas dependências de produção (pg + dotenv)
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps --omit=dev
+
+# Frontend compilado
+COPY --from=builder /app/dist ./dist
+
+# Servidor compilado
+COPY --from=server-builder /app/server.mjs ./server.mjs
+
+EXPOSE 3001
+
+ENV NODE_ENV=production
+ENV PORT=3001
+
+CMD ["node", "server.mjs"]
