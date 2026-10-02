@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -55,12 +56,21 @@ app.get('/api/health', async (_req, res) => {
 });
 
 // ── Serve o frontend React ────────────────────────────────────
-const distDir = path.join(__dirname, '..', 'dist');
+// Suporta dist tanto na raiz (/app/dist em produção) quanto no nível superior (../dist em dev com tsx)
+const distDir = fs.existsSync(path.join(__dirname, 'dist'))
+  ? path.join(__dirname, 'dist')
+  : path.join(__dirname, '..', 'dist');
+
 app.use(express.static(distDir));
 
 // SPA fallback — qualquer rota não-API serve o index.html
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(distDir, 'index.html'));
+  const indexPath = path.join(distDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Página não encontrada ou build do frontend ausente.');
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -68,3 +78,18 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   CLINIC_ID: ${CLINIC_ID}`);
   console.log(`   DB: ${process.env.DATABASE_URL?.replace(/:([^:@]+)@/, ':****@') ?? 'não configurado'}`);
 });
+
+// Em produção, se a porta principal for 80, escuta também na 3001 (ou vice-versa) para garantir compatibilidade com qualquer roteamento do Traefik/Coolify
+const SECONDARY_PORT = PORT === 80 ? 3001 : (PORT === 3001 && process.env.NODE_ENV === 'production' ? 80 : null);
+if (SECONDARY_PORT) {
+  try {
+    const s2 = app.listen(SECONDARY_PORT, '0.0.0.0', () => {
+      console.log(`   (Porta secundária ativa: ${SECONDARY_PORT})`);
+    });
+    s2.on('error', () => {
+      // Ignora erro se a porta secundária já estiver ocupada ou sem privilégios
+    });
+  } catch {
+    // Ignora
+  }
+}
